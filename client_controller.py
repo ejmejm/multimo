@@ -98,6 +98,10 @@ def run_client(installdir='MalmoPlatform'):
     
 #     return pids
 
+
+
+# INFO: ->mcp(9001) Listening for messages on port 9001
+
 def start_n_clients(n_clients, start_port=9000, ports=None):
     """Starts n Minecraft clients"""
 
@@ -106,13 +110,16 @@ def start_n_clients(n_clients, start_port=9000, ports=None):
 
     assert len(ports) >= n_clients, 'The length of ports must equal to or greather than n_clients'
 
+    setup_decomp_workspace()
+
     pids = []
     for client_idx in range(n_clients):
-        new_pid = os.fork()
+        build_client(ports[client_idx])
+        print('Finished build for client with port, {}!'.format(ports[client_idx]))
 
+        
         if new_pid == 0: # Child process
-            malmoenv.bootstrap.launch_minecraft(ports[client_idx])
-            print('Minecraft client with pid, "{}" dying.'.format(os.getpid()))
+            run_client()
             os._exit(0)
         else:
             os.wait()
