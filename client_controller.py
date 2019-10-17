@@ -1,7 +1,16 @@
+import atexit
 import os
+import signal
 import subprocess
+from multiprocessing import Process
+import sys
+import time
 
 import malmoenv.bootstrap
+
+CLIENT_BUILD_RUN_DELAY = 5 # Number of seconds to wait in between separate build
+                           # Without this, a run and build will be issued simultaneously
+CLIENT_PROCESSES = []      # All client processes
 
 def setup_decomp_workspace(installdir='MalmoPlatform'):
     cwd = os.getcwd()
@@ -57,9 +66,12 @@ def run_client(installdir='MalmoPlatform'):
 
     try:
         cmd = ['./gradlew', 'runClient']
-        subprocess.check_call(cmd)
+        client = subprocess.Popen(cmd)
+        CLIENT_PROCESSES.append(client)
     finally:
         os.chdir(cwd)
+
+    return client
 
 
 # def build_client(port, installdir="MalmoPlatform", replaceable=False):
@@ -99,11 +111,8 @@ def run_client(installdir='MalmoPlatform'):
 #     return pids
 
 
-
-# INFO: ->mcp(9001) Listening for messages on port 9001
-
 def start_n_clients(n_clients, start_port=9000, ports=None):
-    """Starts n Minecraft clients"""
+    """Starts n Minecraft clients."""
 
     if ports is None:
         ports = list(range(start_port, start_port + n_clients))
@@ -112,24 +121,27 @@ def start_n_clients(n_clients, start_port=9000, ports=None):
 
     setup_decomp_workspace()
 
-    pids = []
+    new_processes = []
     for client_idx in range(n_clients):
         build_client(ports[client_idx])
         print('Finished build for client with port, {}!'.format(ports[client_idx]))
 
-        
-        if new_pid == 0: # Child process
-            run_client()
-            os._exit(0)
-        else:
-            os.wait()
-    
-    return pids
+        new_client = run_client()
+        if new_client is not None:
+            new_processes.append(new_client)
 
+        time.sleep(CLIENT_BUILD_RUN_DELAY)
+    
+    return new_processes
+
+def cleanup_clients():
+    """Ensure that all Minecraft clients are closed when this program ends."""
+    for client in CLIENT_PROCESSES:
+        client.kill()
+    print('Killed all Minecraft clients.')
+
+atexit.register(cleanup_clients)
 
 if __name__ == '__main__':
-    # pids = start_n_clients(2)
-    # print(pids)
-    # setup_decomp_workspace()
-    build_client(9005)
-    run_client()
+    start_n_clients(2)
+    input('Pausing main process until killed...')
