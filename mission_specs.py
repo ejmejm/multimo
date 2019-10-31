@@ -2,13 +2,9 @@ from enum import Enum
 
 import MalmoPython
 
-class WorldType(Enum):
-    DEFAULT = 'default'
-    FLAT = 'flat'
-
 class WorldSpec():
-    def __init__(self, world_type=WorldType.DEFAULT, seed=None, start_time=None,
-                 freeze_time=False, time_limit=None, ms_per_tick=None):
+    def __init__(self, world_type='default', seed=None, start_time=None,
+                 freeze_time=None, time_limit=None, ms_per_tick=None):
         self.world_type = world_type
         self.seed = seed
         self.start_time = start_time
@@ -39,7 +35,7 @@ class WorldSpec():
         if self.start_time:
             xml += f'<StartTime>{self.start_time}</StartTime>\n'
         if self.freeze_time is not None:
-            xml += f'<AllowPassageOfTime>{str(self.start_time).lower()}</AllowPassageOfTime>\n'
+            xml += f'<AllowPassageOfTime>{str(self.freeze_time).lower()}</AllowPassageOfTime>\n'
         
         # End time
         xml += '''</Time>
@@ -50,19 +46,19 @@ class WorldSpec():
         xml += '<ServerHandlers>\n'
 
         # Defining world types and seeds
-        if self.seed and self.world_type==WorldType.DEFAULT:
+        if self.seed and self.world_type == 'default':
             xml += f'''<DefaultWorldGenerator
             seed="{self.seed}"/>
             '''
-        elif self.world_type == WorldType.DEFAULT:
+        elif self.world_type == 'default':
             xml += '<DefaultWorldGenerator/>\n'
-        elif self.seed and self.world_type==WorldType.FLAT:
+        elif self.seed and self.world_type == 'flat':
             xml += f'''<FlatWorldGenerator
             seed="{self.seed}"/>
             '''
-        elif self.world_type == WorldType.FLAT:
+        elif self.world_type == 'flat':
             xml += '<FlatWorldGenerator/>\n'
-        
+
         # Times
         if self.time_limit:
             xml += f'<ServerQuitFromTimeUp description="" timeLimitMs="{self.time_limit}"/>\n'
@@ -80,7 +76,15 @@ class AgentSpec():
         pass
     
     def get_xml(self):
-        return ''
+        return '''<AgentSection mode="Survival">
+                <Name>MalmoTutorialBot</Name>
+                <AgentStart/>
+                <AgentHandlers>
+                  <ObservationFromFullStats/>
+                  <ContinuousMovementCommands turnSpeedDegs="180"/>
+                </AgentHandlers>
+              </AgentSection>
+              '''
         
 class TaskSpec():
     def __init__(self):
@@ -89,7 +93,11 @@ class TaskSpec():
     def get_xml(self):
         return ''
 
-def compile_mission_spec(world_spec=None, agent_spec=None, task_spec=None, summary=''):
+def compile_mission_spec(world_spec=None, agent_spec=None, 
+        task_spec=None, summary='', xml=None, print_xml=False):
+    if xml:
+        return MalmoPython.MissionSpec(xml, True), MalmoPython.MissionRecordSpec()
+
     if world_spec is None and agent_spec is None and task_spec is None:
         return MalmoPython.MissionSpec(), MalmoPython.MissionRecordSpec()
 
@@ -108,12 +116,17 @@ def compile_mission_spec(world_spec=None, agent_spec=None, task_spec=None, summa
     '''
 
     xml += world_spec.get_xml()
+    xml += '\n'
     xml += agent_spec.get_xml()
+    xml += '\n'
     xml += task_spec.get_xml()
 
     xml += '</Mission>'
 
+    if print_xml:
+        print(xml)
+
     mission_spec = MalmoPython.MissionSpec(xml, True)
     mission_record = MalmoPython.MissionRecordSpec()
-
+    
     return mission_spec, mission_record
