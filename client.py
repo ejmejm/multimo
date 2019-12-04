@@ -1,3 +1,4 @@
+import argparse
 import atexit
 import os
 import signal
@@ -167,6 +168,13 @@ atexit.register(cleanup_clients, CLIENT_PROCESSES)
 
 # Try using exammples from .../multimo/MalmoPlatform/Malmo/samples/Python_examples
 
+parser = argparse.ArgumentParser()
+
+parser.add_argument('-p', '--port', dest='port', type=int,
+    default=10000, help='Which port to launch the client from')
+
 if __name__ == '__main__':
-    start_client(10000)
+    args = parser.parse_args()
+
+    start_client(args.port)
     input('Enter any input to kill the program...')
