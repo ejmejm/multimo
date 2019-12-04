@@ -72,7 +72,8 @@ class WorldSpec():
 class AgentSpec():
     def __init__(self, name='default_agent', mode='survival', spawn_point=None,
         start_yaw=None, start_pitch=None, inventory=None, action_space='discrete',
-        observation_space='default', reward_type=None, quit_condition=None):
+        observation_space='default', reward_type=None, quit_condition=None,
+        extra_handlers=None):
         """Creates a specification for a single Minecraft agent.
 
         Args:
@@ -92,6 +93,8 @@ class AgentSpec():
                 Should follow the XML formatting inside the <AgentHandlers> tag.
             quit_condition (str): String denoting the quit condition(s) for the agent.
                 Should follow the XML formatting inside the <AgentHandlers> tag.
+            extra_handlers (str): String denoting any extra handlers for the agent.
+                Should follow the XML formatting inside the <AgentHandlers> tag.
         """
 
         self.name = name
@@ -104,41 +107,58 @@ class AgentSpec():
         self.observation_space = observation_space
         self.reward_type = reward_type
         self.quit_condition = quit_condition
+        self.extra_handlers = extra_handlers
     
     def get_xml(self):
-        # xml = ''
+        xml = ''
 
-        # if self.mode.lower() == 'survival':
-        #     xml += '<AgentSection mode="Survival">\n'
-        # elif self.mode.lower() == 'creative':
-        #     xml += '<AgentSection mode="Creative">\n'
-        # else:
-        #     raise ValueError('`mode` must be one of the following values:' + \
-        #         '\{"survival", "creative"\}')
+        if self.mode.lower() == 'survival':
+            xml += '<AgentSection mode="Survival">\n'
+        elif self.mode.lower() == 'creative':
+            xml += '<AgentSection mode="Creative">\n'
+        else:
+            raise ValueError('`mode` must be one of the following values:' + \
+                '\{"survival", "creative"\}')
 
-        # xml += '<Name>{}</Name>\n'.format(self.name)
+        xml += '<Name>{}</Name>\n'.format(self.name)
 
-        # xml += '<AgentStart>\n'
-        # xml += '<Placement>'
-        # if self.spawn_point or self.start_pitch or self:
-        # xml += '</Placement>'
-        # xml += '</AgentStart>'
+        xml += '<AgentStart>\n'
 
+        if self.spawn_point or self.start_pitch or self.start_yaw:
+            xml += '<Placement\n'
+
+            if self.spawn_point:
+                xml += 'x="' + str(self.spawn_point[0]) + '"\n'
+                xml += 'y="' + str(self.spawn_point[1]) + '"\n'
+                xml += 'z="' + str(self.spawn_point[2]) + '"\n'
+            if self.start_pitch is not None:
+                    xml += 'pitch="' + str(self.start_pitch) + '"\n'
+            if self.start_yaw is not None:
+                    xml += 'yaw="' + str(self.start_yaw) + '"\n'
+
+            xml += '/>\n'
+
+            if self.inventory is not None:
+                xml += '<Inventory>\n'
+                xml += self.inventory + '\n'
+                xml += '</Inventory>\n'
+                
+        xml += '</AgentStart>\n'
+
+        xml += '<AgentHandlers>'
+
+        if self.reward_type:
+            xml += self.reward_type + '\n'
+        if self.quit_condition:
+            xml += self.quit_condition + '\n'
+        if self.extra_handlers:
+            xml += self.extra_handlers + '\n'
+
+        xml += '</AgentHandlers>'
         
-        # xml += '</AgentSection>'
+        xml += '</AgentSection>\n'
 
-        return '''<AgentSection mode="Survival">
-                <Name>MalmoTutorialBot</Name>
-                <AgentStart>
-                    <Placement>
-                    </Placement>
-                </AgentStart>
-                <AgentHandlers>
-                  <ObservationFromFullStats/>
-                  <ContinuousMovementCommands turnSpeedDegs="180"/>
-                </AgentHandlers>
-              </AgentSection>
-              '''
+        return xml
         
 class TaskSpec():
     def __init__(self):

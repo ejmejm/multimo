@@ -67,7 +67,7 @@ def run_mission(agent_host, mission_spec, mission_record, client_ports=None):
                 client_pool = MalmoPython.ClientPool()
                 for port in client_ports:
                     client_pool.add(MalmoPython.ClientInfo('127.0.0.1',port))
-                agent_host.startMission(mission_spec, mission_record, client_pool)
+                agent_host.startMission(mission_spec, client_pool, mission_record, 0, '')
             break
         except MalmoPython.MissionException as e:
             errorCode = e.details.errorCode
