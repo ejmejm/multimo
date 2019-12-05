@@ -50,6 +50,9 @@ B:replaceable=true
 B:env=true
 }"""
 
+    if not os.path.exists('run/config'):
+        os.makedirs('run/config')
+
     with open('run/config/malmomodCLIENT.cfg', 'w+') as f:
         f.write(config_str)
 
