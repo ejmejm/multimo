@@ -184,7 +184,7 @@ class AgentSpec():
 
         # Action type
         if self.action_type.lower() == 'discrete':
-            xml += '<DiscreteMovementCommaands/>\n'
+            xml += '<DiscreteMovementCommands/>\n'
         elif self.action_type.lower() == 'continuous':
             xml += '<ContinuousMovementCommands/>\n'
         else:
