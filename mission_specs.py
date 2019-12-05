@@ -71,9 +71,9 @@ class WorldSpec():
 
 class AgentSpec():
     def __init__(self, name='default_agent', mode='survival', spawn_point=None,
-        start_yaw=None, start_pitch=None, inventory=None, action_space='discrete',
-        observation_space='default', reward_type=None, quit_condition=None,
-        extra_handlers=None):
+        start_yaw=None, start_pitch=None, inventory=None, action_space=0,
+        action_type='continuous', observation_space=0, observation_dim=(640, 360),
+        enable_chat=True, reward_type=None, quit_condition=None, extra_handlers=None):
         """Creates a specification for a single Minecraft agent.
 
         Args:
@@ -85,10 +85,16 @@ class AgentSpec():
             start_pitch (int): Starting pitch of the agent.
             inventory (str): String denoting the starting inventory of the agent.
                 Should follow the XML formatting inside the <Inventory> tag.
-            action_space (str): Type of action_space for the agent.
-                Choose from {'dicrete', 'continuous'}.
-            observation_space (str): Type of observation_space for the agent.
-                Choose from {'dicrete', 'continuous'}.
+            action_space (int): Type of action_space for the agent.
+                Choose from {0, 1}. Higher number modes contain more abstractions.
+            action_type (string): Type of actions avaliable to the agent.
+                Choose from {'discrete', 'continuous'}.
+            observation_space (int): Type of observation_space for the agent.
+                Choose from {0, 1}. Higher number modes contain more data.
+            observation_dim (:obj:`tuple` of :obj:`int`): Two elements stating
+                the width and height of the observation space.
+            enable_chat (bool): Whether or not to allow the agent to see and
+                use the chat.
             reward_type (str): String denoting the reward function for the agent.
                 Should follow the XML formatting inside the <AgentHandlers> tag.
             quit_condition (str): String denoting the quit condition(s) for the agent.
@@ -104,7 +110,10 @@ class AgentSpec():
         self.start_pitch = start_pitch
         self.inventory = inventory
         self.action_space = action_space
+        self.action_type = action_type
         self.observation_space = observation_space
+        self.observation_dim = observation_dim
+        self.enable_chat = enable_chat
         self.reward_type = reward_type
         self.quit_condition = quit_condition
         self.extra_handlers = extra_handlers
@@ -112,6 +121,7 @@ class AgentSpec():
     def get_xml(self):
         xml = ''
 
+        # Gamemode type
         if self.mode.lower() == 'survival':
             xml += '<AgentSection mode="Survival">\n'
         elif self.mode.lower() == 'creative':
@@ -120,10 +130,12 @@ class AgentSpec():
             raise ValueError('`mode` must be one of the following values:' + \
                 '\{"survival", "creative"\}')
 
+        # Agent name
         xml += '<Name>{}</Name>\n'.format(self.name)
 
         xml += '<AgentStart>\n'
 
+        # Initial spawn details
         if self.spawn_point or self.start_pitch or self.start_yaw:
             xml += '<Placement\n'
 
@@ -145,8 +157,47 @@ class AgentSpec():
                 
         xml += '</AgentStart>\n'
 
-        xml += '<AgentHandlers>'
+        xml += '<AgentHandlers>\n'
 
+        # Chat ability
+        if self.enable_chat:
+            xml += '<ObservationFromChat/>\n'
+            xml += '<ChatCommands/>\n'
+
+        # Observation space level of detail
+        if self.observation_space >= 0:
+            xml += '<VideoProducer\n'
+            if self.observation_space == 0:
+                xml += f'want_depth="{0}"\n'
+            else:
+                xml += f'want_depth="{1}"\n'
+            xml += 'viewpoint="0"\n'
+            xml += '>\n'
+            xml += f'<Width>{self.observation_dim[0]}</Width>\n'
+            xml += f'<Height>{self.observation_dim[1]}</Height>\n'
+            xml += '<DepthScaling autoscale="1"/>\n'
+            xml += '</VideoProducer>\n'
+
+        if self.observation_space >= 1:
+            xml += '<ObservationFromFullInventory/>\n'
+            xml += '<ObservationFromFullStats/>\n'
+
+        # Action type
+        if self.action_type.lower() == 'discrete':
+            xml += '<DiscreteMovementCommaands/>\n'
+        elif self.action_type.lower() == 'continuous':
+            xml += '<ContinuousMovementCommands/>\n'
+        else:
+            raise ValueError('`action_type` must be one of the following values:' + \
+                '\{"discrete", "continuous"\}')
+
+        # Action space level of detail
+        if self.action_space >= 1:
+            xml += '<InventoryCommands/>\n'
+        if self.action_space >= 2:
+            xml += '<SimpleCraftCommands/>\n'
+
+        # Various handlers
         if self.reward_type:
             xml += self.reward_type + '\n'
         if self.quit_condition:
@@ -154,7 +205,7 @@ class AgentSpec():
         if self.extra_handlers:
             xml += self.extra_handlers + '\n'
 
-        xml += '</AgentHandlers>'
+        xml += '</AgentHandlers>\n'
         
         xml += '</AgentSection>\n'
 

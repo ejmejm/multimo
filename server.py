@@ -54,7 +54,7 @@ def create_host():
 #     mission_record = MalmoPython.MissionRecordSpec()
 #     return mission_spec, mission_record
 
-def run_mission(agent_host, mission_spec, mission_record, client_ports=None):
+def run_mission(agent_host, mission_spec, mission_record, role=0, client_ports=None):
     # Attempt to start a mission:
     used_attempts = 0
     max_attempts = 5
@@ -67,7 +67,7 @@ def run_mission(agent_host, mission_spec, mission_record, client_ports=None):
                 client_pool = MalmoPython.ClientPool()
                 for port in client_ports:
                     client_pool.add(MalmoPython.ClientInfo('127.0.0.1',port))
-                agent_host.startMission(mission_spec, client_pool, mission_record, 0, '')
+                agent_host.startMission(mission_spec, client_pool, mission_record, role, '')
             break
         except MalmoPython.MissionException as e:
             errorCode = e.details.errorCode
@@ -107,13 +107,13 @@ def run_mission(agent_host, mission_spec, mission_record, client_ports=None):
     print()
     print('Mission running ', end=' ')
 
-    # Loop until mission ends:
-    while world_state.is_mission_running:
-        print('.', end='')
-        time.sleep(0.1)
-        world_state = agent_host.getWorldState()
-        for error in world_state.errors:
-            print('Error:', error.text)
+    # # Loop until mission ends:
+    # while world_state.is_mission_running:
+    #     print('.', end='')
+    #     time.sleep(0.1)
+    #     world_state = agent_host.getWorldState()
+    #     for error in world_state.errors:
+    #         print('Error:', error.text)
 
-    print()
-    print('Mission ended')
+    # print()
+    # print('Mission ended')
