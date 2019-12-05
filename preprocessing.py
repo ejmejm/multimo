@@ -3,6 +3,9 @@ import numpy as np
 
 N_INV_SLOTS = 41
 
+with open('data/mc_item_ids.json', 'r') as f:
+    item_ids = json.load(f)
+
 # Convert to one hot format
 def to_oh(idx, n):
     arr = np.zeros(n)
@@ -41,10 +44,9 @@ def preprocess_state(state, agent_spec, flat=False, incl_chat=True, idx=-1):
         # Inventory parsing
         inv_arr = []
         for i in range(N_INV_SLOTS):
-            # Later turn item names into labels by scraping this site:
-            # https://minecraft-ids.grahamedgecombe.com/
             inv_arr.append(obs[f'InventorySlot_{i}_item'])
-            inv_arr.append(obs[f'InventorySlot_{i}_size'])
+            inv_arr[-1] = item_ids[inv_arr[-1]] / 391.
+            inv_arr.append(obs[f'InventorySlot_{i}_size'] / 64.)
 
         state_dict['inventory'] = np.array(inv_arr)
 
@@ -60,15 +62,24 @@ def preprocess_state(state, agent_spec, flat=False, incl_chat=True, idx=-1):
 
         state_dict['stats'] = np.array(stats_arr)
 
+    # Chat parsing
+    if incl_chat and agent_spec.enable_chat:
+        try:
+            obs = json.loads(state.observations[idx].text)
+            state_dict['chat'] = obs['Chat']
+        except IndexError:
+            state_dict['chat'] = []
+
     if not flat:
         return state_dict
-    elif agent_spec.observation_space == 0:
-        return state_dict['pixels']
-    elif agent_spec.observation_space >= 1:
+    else:
         new_dict = {}
-        new_dict['pixels'] = state_dict['pixels']
-        new_dict['other'] = np.concatenate(
-            [state_dict['inventory'], state_dict['stats']])
+        if incl_chat:
+            new_dict['chat'] = state_dict['chat']
+        if agent_spec.observation_space >= 0:
+            new_dict['pixels'] = state_dict['pixels']
+        if agent_spec.observation_space >= 1:
+            new_dict['other'] = np.concatenate(
+                [state_dict['inventory'], state_dict['stats']])
+
         return new_dict
-    
-    return None

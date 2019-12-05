@@ -3,6 +3,7 @@ import numpy as np
 import json
 import sys
 import time
+from enum import Enum
 
 from mission_specs import compile_mission_spec, WorldSpec, AgentSpec, TaskSpec
 from client import start_client
@@ -17,21 +18,19 @@ if __name__ == '__main__':
     agent_spec = AgentSpec(name='TestAgent', mode='cReAtive', spawn_point=(180, 10, 0),
         start_yaw=0, start_pitch=90,
         inventory='<InventoryItem slot="0" type="diamond_pickaxe"/>',
-        observation_space=1, action_type='continuous')
+        observation_space=0, action_type='continuous',
+        enable_chat=True)
     task_spec = TaskSpec()
 
     my_mission, my_mission_record = compile_mission_spec(
         world_spec=world_spec, 
         agent_specs=agent_spec,
         task_spec=task_spec,
-        print_xml=True)
+        print_xml=False)
 
-    # two_digger.py as example for multiagent clientpool passed into startMission
     run_mission(agent, my_mission, my_mission_record, role=0, client_ports=[10000, 10001])
-    # print('a')
+    
     peek = agent.peekWorldState()
-    print(agent.peekWorldState())
-    print(dir(agent.peekWorldState()))
     print(peek.observations)
     print(peek.video_frames)
     while agent.peekWorldState().is_mission_running:
@@ -40,4 +39,4 @@ if __name__ == '__main__':
         proc_state = preprocess_state(state, agent_spec, flat=False)
         print(proc_state)
         # agent.sendCommand('move 1')
-        time.sleep(1)
+        time.sleep(2)
