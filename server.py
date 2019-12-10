@@ -22,90 +22,94 @@ def create_host():
 
     return agent_host
 
-# def generate_mission(mission_xml=None, flat_word=False, seed=None,
-#     start_time=None, start_loc=None, creative=False, get_video=True,
-#     vid_width=320, vid_height=240, time_limit=None):
-#     """
-#     Creates and returns a mission spec and a mission record.
-#     The values of the parameters include some of the more important
-#     options for the mission spec XML. Other options can be set
-#     manually, or a manual XML can be passed in.
-#     """
-#     if mission_xml is not None:
-#         mission_spec = MalmoPython.MissionSpec(mission_xml, True)
-#     else:
-#         mission_spec = MalmoPython.MissionSpec()
-#         if not flat_word:
-#             mission_spec.createDefaultTerrain()
-#         if seed:
-#             mission_spec.setWorldSeed(seed)
-#         if start_time:
-#             mission_spec.setTimeOfDay(start_time)
-#         if start_loc:
-#             mission_spec.startAt(*start_loc)
-#         if creative:
-#             mission_spec.setModeToCreative()
-#         if get_video:
-#             mission_spec.requestVideo(vid_width, vid_height)
-#         if time_limit:
-#             mission_spec.timeLimitInSeconds(time_limit)
-#         mission_spec.
+def create_hosts(n=1):
+    hosts = []
+    for _ in range(n):
+        hosts.append(create_host())
+    return hosts
 
-#     mission_record = MalmoPython.MissionRecordSpec()
-#     return mission_spec, mission_record
-
-def run_mission(agent_host, mission_spec, mission_record, role=0, client_ports=None):
+def run_mission(agent_hosts, mission_spec, mission_record, client_ports):
     # Attempt to start a mission:
-    used_attempts = 0
-    max_attempts = 5
-    for _ in range(max_attempts):
-        try:
-            print('trying to start')
-            if client_ports is None:
-                agent_host.startMission(mission_spec, mission_record)
-            else:
-                client_pool = MalmoPython.ClientPool()
-                for port in client_ports:
-                    client_pool.add(MalmoPython.ClientInfo('127.0.0.1',port))
-                agent_host.startMission(mission_spec, client_pool, mission_record, role, '')
-            break
-        except MalmoPython.MissionException as e:
-            errorCode = e.details.errorCode
-            if errorCode == MalmoPython.MissionErrorCode.MISSION_SERVER_WARMING_UP:
-                print("Server not quite ready yet - waiting...")
-                time.sleep(2)
-            elif errorCode == MalmoPython.MissionErrorCode.MISSION_INSUFFICIENT_CLIENTS_AVAILABLE:
-                print("Not enough available Minecraft instances running.")
-                used_attempts += 1
-                if used_attempts < max_attempts:
-                    print("Will wait in case they are starting up.", max_attempts - used_attempts, "attempts left.")
+    if not isinstance(agent_hosts, list):
+        agent_hosts = [agent_hosts]
+
+    client_pool = MalmoPython.ClientPool()
+    for port in client_ports:
+        client_pool.add(MalmoPython.ClientInfo('127.0.0.1', port))
+
+    for agent_idx in range(len(agent_hosts)):
+        used_attempts = 0
+        max_attempts = 5
+        for _ in range(max_attempts):
+            try:
+                print('trying to start')
+                print(agent_idx)
+                agent_hosts[agent_idx].startMission(mission_spec, client_pool, mission_record, agent_idx, '')
+                break
+            except MalmoPython.MissionException as e:
+                errorCode = e.details.errorCode
+                if errorCode == MalmoPython.MissionErrorCode.MISSION_SERVER_WARMING_UP:
+                    print("Server not quite ready yet - waiting...")
                     time.sleep(2)
-            elif errorCode == MalmoPython.MissionErrorCode.MISSION_SERVER_NOT_FOUND:
-                print("Server not found - has the mission with role 0 been started yet?")
-                used_attempts += 1
-                if used_attempts < max_attempts:
-                    print("Will wait and retry.", max_attempts - used_attempts, "attempts left.")
-                    time.sleep(2)
-            else:
-                print("Other error:", e.message)
-                print("Waiting will not help here - bailing immediately.")
+                elif errorCode == MalmoPython.MissionErrorCode.MISSION_INSUFFICIENT_CLIENTS_AVAILABLE:
+                    print("Not enough available Minecraft instances running.")
+                    used_attempts += 1
+                    if used_attempts < max_attempts:
+                        print("Will wait in case they are starting up.", max_attempts - used_attempts, "attempts left.")
+                        time.sleep(2)
+                elif errorCode == MalmoPython.MissionErrorCode.MISSION_SERVER_NOT_FOUND:
+                    print("Server not found - has the mission with role 0 been started yet?")
+                    used_attempts += 1
+                    if used_attempts < max_attempts:
+                        print("Will wait and retry.", max_attempts - used_attempts, "attempts left.")
+                        time.sleep(2)
+                else:
+                    print("Other error:", e.message)
+                    print("Waiting will not help here - bailing immediately.")
+                    exit(1)
+            if used_attempts == max_attempts:
+                print("All chances used up - bailing now.")
                 exit(1)
-        if used_attempts == max_attempts:
-            print("All chances used up - bailing now.")
+
+    print('Starting safe wait')
+    safeWaitForStart(agent_hosts)
+    
+    # print('Waiting for the mission to start ', end=' ')
+    # for agent_idx in range(len(agent_hosts)): 
+    #     # Loop until mission starts:
+    #     world_state = agent_hosts[agent_idx].getWorldState()
+    #     while not world_state.has_mission_begun:
+    #         print('.', end='')
+    #         time.sleep(0.1)
+    #         world_state = agent_hosts[agent_idx].getWorldState()
+    #         for error in world_state.errors:
+    #             print('Error:', error.text)
+
+    # print()
+    # print('Mission running ', end=' ')
+
+def safeWaitForStart(agent_hosts):
+    print("Waiting for the mission to start", end=' ')
+    start_flags = [False for a in agent_hosts]
+    start_time = time.time()
+    time_out = 120  # Allow two minutes for mission to start.
+    while not all(start_flags) and time.time() - start_time < time_out:
+        states = [a.peekWorldState() for a in agent_hosts]
+        start_flags = [w.has_mission_begun for w in states]
+        errors = [e for w in states for e in w.errors]
+        if len(errors) > 0:
+            print("Errors waiting for mission start:")
+            for e in errors:
+                print(e.text)
+            print("Bailing now.")
             exit(1)
-
-    # Loop until mission starts:
-    print('Waiting for the mission to start ', end=' ')
-    world_state = agent_host.getWorldState()
-    while not world_state.has_mission_begun:
-        print('.', end='')
         time.sleep(0.1)
-        world_state = agent_host.getWorldState()
-        for error in world_state.errors:
-            print('Error:', error.text)
-
+        print(".", end=' ')
     print()
-    print('Mission running ', end=' ')
+    if time.time() - start_time >= time_out:
+        print("Timed out waiting for mission to begin. Bailing.")
+        exit(1)
+    print("Mission has started.")
 
     # # Loop until mission ends:
     # while world_state.is_mission_running:

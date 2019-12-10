@@ -1,6 +1,31 @@
+from server import create_hosts, run_mission
 from enum import Enum
 
 import MalmoPython
+
+class Mission():
+    def __init__(self, world_spec, agent_specs, client_ports):
+        self.world_spec = world_spec
+        self.agent_specs = agent_specs
+        self.client_ports = client_ports
+        self.agent_hosts = create_hosts(n=len(agent_specs))
+
+    def run(self, print_xml=False):
+        mission, mission_record = compile_mission_spec(
+            world_spec=self.world_spec, 
+            agent_specs=self.agent_specs,
+            print_xml=print_xml)
+
+        run_mission(self.agent_hosts, mission, mission_record, self.client_ports)
+
+        return self.agent_hosts
+
+    def is_running(self):
+        for agent_host in self.agent_hosts:
+            if agent_host.peekWorldState().is_mission_running:
+                return True
+
+        return False
 
 class WorldSpec():
     def __init__(self, world_type='default', seed=None, start_time=None,
@@ -210,28 +235,19 @@ class AgentSpec():
         xml += '</AgentSection>\n'
 
         return xml
-        
-class TaskSpec():
-    def __init__(self):
-        pass
 
-    def get_xml(self):
-        return ''
-
-def compile_mission_spec(world_spec=None, agent_specs=None, 
-        task_spec=None, summary='', xml=None, print_xml=False):
+def compile_mission_spec(world_spec=None, agent_specs=None,
+        summary='', xml=None, print_xml=False):
     if xml:
         return MalmoPython.MissionSpec(xml, True), MalmoPython.MissionRecordSpec()
 
-    if world_spec is None and agent_specs is None and task_spec is None:
+    if world_spec is None and agent_specs is None:
         return MalmoPython.MissionSpec(), MalmoPython.MissionRecordSpec()
 
     if world_spec is None:
         world_spec = WorldSpec()
     if agent_specs is None:
         agent_specs = [AgentSpec()]
-    if task_spec is None:
-        task_spec = TaskSpec()
 
     # AgentSpecs should be a list
     if isinstance(agent_specs, AgentSpec):
@@ -249,7 +265,6 @@ def compile_mission_spec(world_spec=None, agent_specs=None,
     for agent_spec in agent_specs:
         xml += agent_spec.get_xml()
         xml += '\n'
-    xml += task_spec.get_xml()
 
     xml += '</Mission>'
 
