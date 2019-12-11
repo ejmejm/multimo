@@ -1,8 +1,9 @@
 import time
 
-from preprocessing import preprocess_state
+from preprocessing import preprocess_state, check_oh
 from server import create_hosts, run_mission
 
+import numpy as np
 import MalmoPython
 
 class Mission():
@@ -46,9 +47,9 @@ class Mission():
     def step(self, actions, wait_time=1):
         for agent_host, act, agent_spec in zip(self.agent_hosts, actions, self.agent_specs):
             if agent_spec.action_type == 'continuous':
-                self.continuous_step(agent_host, act)
+                self.continuous_step(agent_host, agent_spec.action_space, agent_spec.enable_chat, act)
             elif agent_spec.action_type == 'discrete':
-                self.discrete_step(agent_host, act)
+                self.discrete_step(agent_host, agent_spec.action_space, agent_spec.enable_chat, act)
 
         if wait_time > 0:
             time.sleep(wait_time)
@@ -61,7 +62,7 @@ class Mission():
 
         return results
 
-    def continuous_step(self, agent_host, action):
+    def continuous_step(self, agent_host, action_space, enable_chat, action):
         """Takes a set of actions in the environment based on `action`.
 
         Args:
@@ -78,13 +79,18 @@ class Mission():
                     values should be {0, 1}.
                 chat: String to be outputed to chat. An empty string will result in no
                     chat action being performed.
+                inventory: List corresponding to the following actions:
+                    [discardCurrentItem, [noChange, hotbar1, ..., hotbar9], [doNothing, swapItems, combineItems],
+                     [srcInvSlot1, ..., srcInvSlot41], [destInvSlot1, ..., destInvSlot41]].
+                    Each sub-list should contain all zeros, except for a single one
+                    to perform an action (one-hot format). discardCurrentItem should be binary.
         """
         if not isinstance(action, list):
             raise ValueError('Actions must contain a list with an entry for each separate action space!')
         
         if len(action) == 0:
             return None
-        if len(action) >= 1:
+        if action_space >= 0 and len(action) >= 1:
             move_acts = action[0]
             agent_host.sendCommand(f'move {move_acts[0]}')
             agent_host.sendCommand(f'pitch {move_acts[1]}')
@@ -94,10 +100,36 @@ class Mission():
             agent_host.sendCommand(f'attack {move_acts[5]}')
             agent_host.sendCommand(f'crouch {move_acts[6]}')
             agent_host.sendCommand(f'jump {move_acts[7]}')
+        if enable_chat and len(action) >= 2 and action[1] != '':
+            agent_host.sendCommand(f'chat {action[1]}')
+        if action_space >= 1 and len(action) >= 3:
+            inv_acts = action[2]
+            if inv_acts[0] == 1:
+                agent_host.sendCommand('discardCurrentItem')
+            if check_oh(inv_acts[1]):
+                hotbar_idx = np.argmax(inv_acts[1])
+                if hotbar_idx > 0:
+                    agent_host.sendCommand(f'hotbar.{hotbar_idx} 1')
+            if check_oh(inv_acts[2]) and np.argmax(inv_acts[2]) != 0 and check_oh(inv_acts[3]) and check_oh(inv_acts[4]):
+                base_command = ''
+                if np.argmax(inv_acts[2]) == 1:
+                    base_command = 'swapInventoryItems'
+                elif np.argmax(inv_acts[2]) == 1:
+                    base_command = 'combineInventoryItems'
+
+                src_idx = np.argmax(inv_acts[3])
+                dest_idx = np.argmax(inv_acts[4])
+
+                agent_host.sendCommand(f'{base_command} {src_idx} {dest_idx}')
+                
+
+        if action_space >= 2 and len(action) >= 4:
+            craft_acts = action[3]
+            agent_host.sendCommand(f'move {move_acts[0]}')
 
         return 0
 
-    def discrete_step(self, agent_host, action):
+    def discrete_step(self, agent_host, action_space, enable_chat, action):
         return 0
 
 class WorldSpec():

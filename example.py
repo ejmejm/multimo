@@ -27,14 +27,20 @@ if __name__ == '__main__':
 
     agents = mission.run()
     while mission.is_running():
-        mission.step([[[1, 0, 0.1, 0, 0, 1, 0, 1], '']])
+        inv_act = [0, np.zeros(10), np.zeros(3), np.zeros(41), np.zeros(41)]
+        inv_act[1][9] = 1
+        inv_act[2][1] = 1
+        inv_act[3][0] = 1
+        inv_act[4][8] = 1
+
+        mission.step([[[1, 0, 0.1, 0, 0, 1, 0, 1], '', inv_act]])
 
     # i  = 0
     # agents = mission.run()
     # while mission.is_running():
     #     for agent in agents:
     #         if i < 5:
-    #             agent.sendCommand('hotbar.5 0')
+    #             agent.sendCommand('swapInventoryItems 0 2')
     #         # agent.sendCommand('jump 1')
     #         # agent.sendCommand('jumpmove 1')
     #         # agent.sendCommand('jump 1')

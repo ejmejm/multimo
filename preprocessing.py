@@ -12,6 +12,21 @@ def to_oh(idx, n):
     arr [idx] = 1
     return arr
 
+def check_oh(l):
+    one_count = 0
+    for item in l:
+        if item == 1:
+            if one_count >= 1:
+                return False
+            elif one_count == 0:
+                one_count += 1
+        elif item != 0:
+            return False
+
+    if one_count == 1:
+        return True
+    return False
+
 def preprocess_state(state, agent_spec, flat=False, incl_chat=True, idx=-1):
     state_dict = {}
     try:
