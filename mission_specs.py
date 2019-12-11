@@ -1,5 +1,7 @@
+import time
+
+from preprocessing import preprocess_state
 from server import create_hosts, run_mission
-from enum import Enum
 
 import MalmoPython
 
@@ -9,6 +11,14 @@ class Mission():
         self.agent_specs = agent_specs
         self.client_ports = client_ports
         self.agent_hosts = create_hosts(n=len(agent_specs))
+        
+        # self.act_types = []
+        # for spec in agent_specs:
+        #     self.act_types.append(spec.action_type.lower())
+        
+        # self.act_types = []
+        # for spec in agent_specs:
+        #     self.act_types.append(spec.action_type.lower())
 
     def run(self, print_xml=False):
         mission, mission_record = compile_mission_spec(
@@ -20,12 +30,75 @@ class Mission():
 
         return self.agent_hosts
 
+    def get_compiled_mission(self):
+        return compile_mission_spec(
+                world_spec=self.world_spec, 
+                agent_specs=self.agent_specs,
+                print_xml=False)[0]
+
     def is_running(self):
         for agent_host in self.agent_hosts:
             if agent_host.peekWorldState().is_mission_running:
                 return True
 
         return False
+
+    def step(self, actions, wait_time=1):
+        for agent_host, act, agent_spec in zip(self.agent_hosts, actions, self.agent_specs):
+            if agent_spec.action_type == 'continuous':
+                self.continuous_step(agent_host, act)
+            elif agent_spec.action_type == 'discrete':
+                self.discrete_step(agent_host, act)
+
+        if wait_time > 0:
+            time.sleep(wait_time)
+
+        results = []
+        for agent_host, agent_spec in zip(self.agent_hosts, self.agent_specs):
+            state = agent_host.getWorldState()
+            proc_state = preprocess_state(state, agent_spec, flat=False)
+            results.append(proc_state)
+
+        return results
+
+    def continuous_step(self, agent_host, action):
+        """Takes a set of actions in the environment based on `action`.
+
+        Args:
+            agent_host: Agent host to send the commands to.
+            action (:obj:`list` of :obj:`float`): The first dimension of the
+                list should be equal to the agent host's action space plus two
+                (i.e. action space of 2 would mean list of length 3).
+                The first dimensions of the list correspond to the following
+                types of actions: [movement, chat, inventory, crafting].
+                
+                movement: List with shape of [8], corresponding to the following
+                    actions: [move, strafe, turn, pitch, use, attack, crouch, jump].
+                    The first four values should be [-1, 1], and the latter four
+                    values should be {0, 1}.
+                chat: String to be outputed to chat. An empty string will result in no
+                    chat action being performed.
+        """
+        if not isinstance(action, list):
+            raise ValueError('Actions must contain a list with an entry for each separate action space!')
+        
+        if len(action) == 0:
+            return None
+        if len(action) >= 1:
+            move_acts = action[0]
+            agent_host.sendCommand(f'move {move_acts[0]}')
+            agent_host.sendCommand(f'pitch {move_acts[1]}')
+            agent_host.sendCommand(f'turn {move_acts[2]}')
+            agent_host.sendCommand(f'strafe {move_acts[3]}')
+            agent_host.sendCommand(f'use {move_acts[4]}')
+            agent_host.sendCommand(f'attack {move_acts[5]}')
+            agent_host.sendCommand(f'crouch {move_acts[6]}')
+            agent_host.sendCommand(f'jump {move_acts[7]}')
+
+        return 0
+
+    def discrete_step(self, agent_host, action):
+        return 0
 
 class WorldSpec():
     def __init__(self, world_type='default', seed=None, start_time=None,
@@ -209,7 +282,7 @@ class AgentSpec():
 
         # Action type
         if self.action_type.lower() == 'discrete':
-            xml += '<DiscreteMovementCommands/>\n'
+            xml += '<DiscreteMovementCommands autoFall="1"/>\n'
         elif self.action_type.lower() == 'continuous':
             xml += '<ContinuousMovementCommands/>\n'
         else:
