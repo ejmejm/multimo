@@ -6,10 +6,13 @@ N_INV_SLOTS = 41
 with open('data/mc_item_ids.json', 'r') as f:
     item_ids = json.load(f)
 
+id_items = {v: k for k, v in item_ids.items()}
+n_items = len(item_ids.keys())
+
 # Convert to one hot format
 def to_oh(idx, n):
     arr = np.zeros(n)
-    arr [idx] = 1
+    arr[idx] = 1
     return arr
 
 def check_oh(l):
@@ -26,6 +29,26 @@ def check_oh(l):
     if one_count == 1:
         return True
     return False
+
+def item_to_float(item):
+    if isinstance(item, str):
+        return float(item_ids[item]) / (n_items - 1)
+    elif isinstance(item, int):
+        return float(item) / (n_items - 1)
+    else:
+        raise ValueError('`item` must be either of type string or int')
+
+def item_to_oh(item):
+    if isinstance(item, str):
+        return to_oh(item_ids[item], n_items)
+    elif isinstance(item, int):
+        return to_oh(item, n_items)
+    else:
+        raise ValueError('`item` must be either of type string or int')
+
+def oh_to_item(oh):
+    idx = np.argmax(oh)
+    return id_items[idx]
 
 def preprocess_state(state, agent_spec, flat=False, incl_chat=True, idx=-1):
     state_dict = {}

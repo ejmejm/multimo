@@ -1,6 +1,6 @@
 import time
 
-from preprocessing import preprocess_state, check_oh
+from preprocessing import preprocess_state, check_oh, oh_to_item
 from server import create_hosts, run_mission
 
 import numpy as np
@@ -84,6 +84,10 @@ class Mission():
                      [srcInvSlot1, ..., srcInvSlot41], [destInvSlot1, ..., destInvSlot41]].
                     Each sub-list should contain all zeros, except for a single one
                     to perform an action (one-hot format). discardCurrentItem should be binary.
+                crafting: List corresponding to the follwing actions: 
+                    [[doNothing, craftItem], [itemId1, ..., itemId392]].
+                    Each sub-list should contain all zeros, except for a single one
+                    to perform an action (one-hot format).
         """
         if not isinstance(action, list):
             raise ValueError('Actions must contain a list with an entry for each separate action space!')
@@ -100,8 +104,10 @@ class Mission():
             agent_host.sendCommand(f'attack {move_acts[5]}')
             agent_host.sendCommand(f'crouch {move_acts[6]}')
             agent_host.sendCommand(f'jump {move_acts[7]}')
+
         if enable_chat and len(action) >= 2 and action[1] != '':
             agent_host.sendCommand(f'chat {action[1]}')
+
         if action_space >= 1 and len(action) >= 3:
             inv_acts = action[2]
             if inv_acts[0] == 1:
@@ -122,15 +128,14 @@ class Mission():
 
                 agent_host.sendCommand(f'{base_command} {src_idx} {dest_idx}')
                 
-
         if action_space >= 2 and len(action) >= 4:
             craft_acts = action[3]
-            agent_host.sendCommand(f'move {move_acts[0]}')
-
-        return 0
+            if check_oh(craft_acts[0]) and np.argmax(craft_acts[0]) == 1:
+                target_item = oh_to_item(craft_acts[1])
+                agent_host.sendCommand(f'craft {target_item}')
 
     def discrete_step(self, agent_host, action_space, enable_chat, action):
-        return 0
+        pass
 
 class WorldSpec():
     def __init__(self, world_type='default', seed=None, start_time=None,
