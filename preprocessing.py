@@ -105,7 +105,7 @@ def preprocess_state(state, agent_spec, flat=False, incl_chat=True, idx=-1):
         try:
             obs = json.loads(state.observations[idx].text)
             state_dict['chat'] = obs['Chat']
-        except IndexError:
+        except KeyError:
             state_dict['chat'] = []
 
     if not flat:

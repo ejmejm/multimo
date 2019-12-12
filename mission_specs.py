@@ -31,6 +31,12 @@ class Mission():
 
         return self.agent_hosts
 
+    def print_mission_spec(self):
+        compile_mission_spec(
+            world_spec=self.world_spec, 
+            agent_specs=self.agent_specs,
+            print_xml=True)
+
     def get_compiled_mission(self):
         return compile_mission_spec(
                 world_spec=self.world_spec, 
@@ -139,13 +145,15 @@ class Mission():
 
 class WorldSpec():
     def __init__(self, world_type='default', seed=None, start_time=None,
-                 freeze_time=None, time_limit=None, ms_per_tick=None):
+                 freeze_time=None, time_limit=None, ms_per_tick=None,
+                 extra_server_handlers=None):
         self.world_type = world_type
         self.seed = seed
         self.start_time = start_time
         self.freeze_time = freeze_time
         self.time_limit = time_limit
         self.ms_per_tick = ms_per_tick
+        self.extra_server_handlers = extra_server_handlers
     
     def get_xml(self):
         xml = ''
@@ -191,6 +199,9 @@ class WorldSpec():
             '''
         elif self.world_type == 'flat':
             xml += '<FlatWorldGenerator/>\n'
+
+        if self.extra_server_handlers:
+            xml += self.extra_server_handlers + '\n'
 
         # Times
         if self.time_limit:
