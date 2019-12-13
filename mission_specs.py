@@ -28,7 +28,7 @@ class Mission():
             print_xml=print_xml)
 
         run_mission(self.agent_hosts, mission, mission_record, self.client_ports)
-
+        
         states = []
         for agent_host, agent_spec in zip(self.agent_hosts, self.agent_specs):
             state = agent_host.getWorldState()

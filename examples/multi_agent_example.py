@@ -1,7 +1,4 @@
 import copy
-import sys
-
-sys.path.insert(0, '../')
 
 from mission_specs import WorldSpec, AgentSpec, Mission
 from server import create_hosts, run_mission
@@ -11,17 +8,7 @@ if __name__ == '__main__':
     world_spec = WorldSpec(time_limit=30000, world_type='flat', start_time=6000)
 
     agent_args = {'mode': 'survival', 'spawn_point': (-203.5, 5, 217.5),
-        'observation_space': 0, 'action_type': 'continuous', 'action_space': 0,
-        'extra_handlers': """<RewardForMissionEnd rewardForDeath="-10000">
-        <Reward description="found_goal" reward="1000" />
-        <Reward description="out_of_time" reward="-1000" />
-        </RewardForMissionEnd>
-        <RewardForTouchingBlockType>
-        <Block type="gold_ore diamond_ore redstone_ore" reward="20" />
-        </RewardForTouchingBlockType>
-        <AgentQuitFromTouchingBlockType>
-        <Block type="gold_block diamond_block redstone_block" description="found_goal" />
-        </AgentQuitFromTouchingBlockType>"""}
+        'observation_space': 0, 'action_type': 'continuous', 'action_space': 0}
 
     agent_args['name'] = 'Agent1'
     agent_spec_1 = AgentSpec(**agent_args)

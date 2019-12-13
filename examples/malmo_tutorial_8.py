@@ -1,7 +1,3 @@
-import sys
-
-sys.path.insert(0, '../')
-
 from mission_specs import WorldSpec, AgentSpec, Mission
 from server import create_hosts, run_mission
 import MalmoPython
