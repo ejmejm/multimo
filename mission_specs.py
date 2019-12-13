@@ -29,7 +29,13 @@ class Mission():
 
         run_mission(self.agent_hosts, mission, mission_record, self.client_ports)
 
-        return self.agent_hosts
+        states = []
+        for agent_host, agent_spec in zip(self.agent_hosts, self.agent_specs):
+            state = agent_host.getWorldState()
+            proc_state = preprocess_state(state, agent_spec, flat=False)
+            states.append(proc_state)
+
+        return states
 
     def print_mission_spec(self):
         compile_mission_spec(
@@ -51,6 +57,9 @@ class Mission():
         return False
 
     def step(self, actions, wait_time=1):
+        if actions is None or actions == []:
+            return None
+
         for agent_host, act, agent_spec in zip(self.agent_hosts, actions, self.agent_specs):
             if agent_spec.action_type == 'continuous':
                 self.continuous_step(agent_host, agent_spec.action_space, agent_spec.enable_chat, act)
@@ -60,11 +69,15 @@ class Mission():
         if wait_time > 0:
             time.sleep(wait_time)
 
+        d = self.is_running()
         results = []
         for agent_host, agent_spec in zip(self.agent_hosts, self.agent_specs):
             state = agent_host.getWorldState()
             proc_state = preprocess_state(state, agent_spec, flat=False)
-            results.append(proc_state)
+
+            rewards = sum([r.getValue() for r in state.rewards])
+
+            results.append([proc_state, rewards, d, None])
 
         return results
 
