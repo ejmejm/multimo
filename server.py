@@ -42,8 +42,6 @@ def run_mission(agent_hosts, mission_spec, mission_record, client_ports):
         max_attempts = 5
         for _ in range(max_attempts):
             try:
-                print('trying to start')
-                print(agent_idx)
                 agent_hosts[agent_idx].startMission(mission_spec, client_pool, mission_record, agent_idx, '')
                 break
             except MalmoPython.MissionException as e:

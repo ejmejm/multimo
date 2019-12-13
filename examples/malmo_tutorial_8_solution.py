@@ -72,6 +72,7 @@ if __name__ == '__main__':
     ### Multimo Stuff ###
 
     world_spec = WorldSpec(time_limit=30000, world_type='flat', start_time=14000,
+        ms_per_tick=5, # Normally 50 ms per tick (10 times faster)
         extra_server_handlers="""
             <ClassroomDecorator>
                 <complexity>
@@ -99,6 +100,7 @@ if __name__ == '__main__':
     ports = [10000]
     mission = Mission(world_spec, [agent_spec], ports)
 
+    delay_time = 0.5/10
     full_data = []
     all_rewards = []
     for i in range(1000):
@@ -107,13 +109,15 @@ if __name__ == '__main__':
         obs = mission.run()[0]['pixels']
         while mission.is_running():
             if obs is None:
-                time.sleep(0.1)
+                time.sleep(delay_time)
                 continue
             
             raw_act = get_raw_act(obs)
             act = format_act(raw_act)
 
-            obs, reward, _, _ = mission.step([[act]], wait_time=0.5)[0]
+            obs, reward, done, _ = mission.step([[act]], wait_time=delay_time)[0]
+            if not obs:
+                continue
             obs = obs['pixels']
 
             train_data.append([obs, raw_act, reward])
